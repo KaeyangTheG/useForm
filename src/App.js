@@ -6,6 +6,8 @@ function App() {
   return (
     <div className="App">
       <Form />
+      <hr />
+      <Form />
     </div>
   );
 }

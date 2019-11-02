@@ -1,9 +1,4 @@
-import React, {useState} from 'react';
-
-const _fields = {};
-const _touchedFields = {};
-const _dirtyFields = {};
-const _errors = {};
+import React, {useState, useRef} from 'react';
 
 /*
  type input {
@@ -16,6 +11,10 @@ const _errors = {};
 export default () => {
   const [errors, setErrors] = useState({});
   const [valid, setValidity] = useState(true);
+  const fieldsRef = useRef({});
+  const touchedFieldsRef = useRef({});
+  const dirtyFieldsRef = useRef({});
+  const errorsRef = useRef({});
 
   // recalculate the validity of the form after every new input is registered,
   // and on every value update
@@ -23,19 +22,19 @@ export default () => {
     // the criteria for form validity is that there are no errors
     // and that all required fields have had their change events fired at least once
     setValidity(
-      Object.keys(_fields).length === Object.keys(_touchedFields).length &&
-        Object.keys(_errors).every(key => !_errors[key])
-    );  
+      Object.keys(fieldsRef.current).length === Object.keys(touchedFieldsRef.current).length &&
+        Object.keys(errorsRef.current).every(key => !errorsRef.current[key])
+    );
   };
 
   const register = input => {
     return (ref) => {
-      if (!ref || !!(_fields[input.name])) {
+      if (!ref || !!(fieldsRef.current[input.name])) {
         return;
       }
-      _fields[input.name] = ref;
+      fieldsRef.current[input.name] = ref;
       if (!input.required) {
-        _touchedFields[input.name] = ref;
+        touchedFieldsRef.current[input.name] = ref;
       }
       const validateAndUpdateErrors = ({target}) => {
         if (!target) {
@@ -43,23 +42,25 @@ export default () => {
         }
 
         if (input.validators) {
-          _errors[input.name] = 
+          errorsRef.current[input.name] =
             input.validators
               .map(validator => validator(target.value))
               .find(str => str);
-          setErrors(_errors);
+          setErrors(errorsRef.current);
           updateValidity();
         }
       };
 
-      _fields[input.name].addEventListener('input', event => {
-        _touchedFields[input.name] = ref;
-        if (input.name in _dirtyFields) {
+      fieldsRef.current[input.name].addEventListener('input', event => {
+        touchedFieldsRef.current[input.name] = ref;
+        if (input.name in dirtyFieldsRef.current) {
           validateAndUpdateErrors(event);
+        } else {
+          updateValidity();
         }
       });
-      _fields[input.name].addEventListener('blur', event => {
-        _dirtyFields[input.name] = ref;
+      fieldsRef.current[input.name].addEventListener('blur', event => {
+        dirtyFieldsRef.current[input.name] = ref;
         validateAndUpdateErrors(event);
       });
 
@@ -70,11 +71,11 @@ export default () => {
   const handleSubmit = (onSubmit) => {
     return (event) => {
       event.preventDefault();
-      
+
       onSubmit(
-        Object.keys(_fields)
-          .reduce(key => ({
-            [key]: _fields[key].value
+        Object.keys(fieldsRef.current)
+          .reduce((obj, key) => ({
+            [key]: fieldsRef.current[key].value
           }), {})
       );
     };
